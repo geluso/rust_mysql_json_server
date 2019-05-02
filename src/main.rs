@@ -94,32 +94,28 @@ fn main() {
     fn hello_world(_: &mut Request) -> IronResult<Response> {
       let pool = my::Pool::new("mysql://root:rustyshakleford@localhost:3307/mysql").unwrap();
       let selected_payments: Vec<Payment> = pool.prep_exec("SELECT customer_id, amount, account_name from payment", ())
-      .map(|result| { // In this closure we will map `QueryResult` to `Vec<Payment>`
-          // `QueryResult` is iterator over `MyResult<row, err>` so first call to `map`
-          // will map each `MyResult` to contained `row` (no proper error handling)
-          // and second call to `map` will map each `row` to `Payment`
+      .map(|result| {
           result.map(|x| x.unwrap()).map(|row| {
-              // ⚠️ Note that from_row will panic if you don't follow your schema
               let (customer_id, amount, account_name) = my::from_row(row);
               Payment {
                   customer_id: customer_id,
                   amount: amount,
                   account_name: account_name,
               }
-          }).collect() // Collect payments so now `QueryResult` is mapped to `Vec<Payment>`
-      }).unwrap(); // Unwrap `Vec<Payment>`
+          }).collect()
+      }).unwrap();
 
       println!("amount: {}", selected_payments[0].amount);
       let amount = selected_payments[0].amount;
-      let john = json!({
-        "name": "John Doe",
+      let json = json!({
+        "name": "Jason Doe",
         "age": 43,
         "phones": [
             "+44 1234567",
             "+44 2345678"
         ]
       });
-      return Ok(Response::with((status::Ok, format!("Hello World! amount: {} {}", amount, john))))
+      return Ok(Response::with((status::Ok, format!("Hello World! amount: {} {}", amount, json))))
     }
 
     let _server = Iron::new(hello_world).http("localhost:3000").unwrap();
