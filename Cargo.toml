@@ -6,3 +6,5 @@ authors = ["Steve Geluso <stevegeluso@gmail.com>"]
 [dependencies]
 iron = "0.6.*"
 mysql = "*"
+serde_json = "1.0"
+

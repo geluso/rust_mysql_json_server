@@ -1,7 +1,9 @@
 extern crate iron;
+extern crate serde_json;
 
 use iron::prelude::*;
 use iron::status;
+use serde_json::json;
 
 #[macro_use]
 extern crate mysql;
@@ -19,6 +21,9 @@ struct Payment {
 fn main() {
     // See docs on the `OptsBuilder`'s methods for the list of options available via URL.
     let pool = my::Pool::new("mysql://root:rustyshakleford@localhost:3307/mysql").unwrap();
+
+    println!("dropping table...");
+    pool.prep_exec(r"DROP TABLE IF EXISTS payment", ()).unwrap();
 
     println!("creating temporary table...");
     // Let's create payment table.
@@ -77,14 +82,44 @@ fn main() {
         }).collect() // Collect payments so now `QueryResult` is mapped to `Vec<Payment>`
     }).unwrap(); // Unwrap `Vec<Payment>`
 
+    println!("amount: {}", selected_payments[0].amount);
+
     // Now make sure that `payments` equals to `selected_payments`.
     // Mysql gives no guaranties on order of returned rows without `ORDER BY`
     // so assume we are lukky.
     assert_eq!(payments, selected_payments);
     println!("Yay!");
 
+    //fn hello_world(_: &mut Request) -> IronResult<Response> {
     fn hello_world(_: &mut Request) -> IronResult<Response> {
-        Ok(Response::with((status::Ok, "Hello World!")))
+      let pool = my::Pool::new("mysql://root:rustyshakleford@localhost:3307/mysql").unwrap();
+      let selected_payments: Vec<Payment> = pool.prep_exec("SELECT customer_id, amount, account_name from payment", ())
+      .map(|result| { // In this closure we will map `QueryResult` to `Vec<Payment>`
+          // `QueryResult` is iterator over `MyResult<row, err>` so first call to `map`
+          // will map each `MyResult` to contained `row` (no proper error handling)
+          // and second call to `map` will map each `row` to `Payment`
+          result.map(|x| x.unwrap()).map(|row| {
+              // ⚠️ Note that from_row will panic if you don't follow your schema
+              let (customer_id, amount, account_name) = my::from_row(row);
+              Payment {
+                  customer_id: customer_id,
+                  amount: amount,
+                  account_name: account_name,
+              }
+          }).collect() // Collect payments so now `QueryResult` is mapped to `Vec<Payment>`
+      }).unwrap(); // Unwrap `Vec<Payment>`
+
+      println!("amount: {}", selected_payments[0].amount);
+      let amount = selected_payments[0].amount;
+      let john = json!({
+        "name": "John Doe",
+        "age": 43,
+        "phones": [
+            "+44 1234567",
+            "+44 2345678"
+        ]
+      });
+      return Ok(Response::with((status::Ok, format!("Hello World! amount: {} {}", amount, john))))
     }
 
     let _server = Iron::new(hello_world).http("localhost:3000").unwrap();
