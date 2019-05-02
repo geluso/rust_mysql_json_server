@@ -20,9 +20,10 @@ fn main() {
     // See docs on the `OptsBuilder`'s methods for the list of options available via URL.
     let pool = my::Pool::new("mysql://root:rustyshakleford@localhost:3307/mysql").unwrap();
 
+    println!("creating temporary table...");
     // Let's create payment table.
     // Unwrap just to make sure no error happened.
-    pool.prep_exec(r"CREATE TEMPORARY TABLE payment (
+    pool.prep_exec(r"CREATE TABLE payment (
                          customer_id int not null,
                          amount int not null,
                          account_name text
@@ -35,6 +36,8 @@ fn main() {
         Payment { customer_id: 7, amount: 8, account_name: None },
         Payment { customer_id: 9, amount: 10, account_name: Some("bar".into()) },
     ];
+
+    println!("inserting...");
 
     // Let's insert payments to the database
     // We will use into_iter() because we do not need to map Stmt to anything else.
@@ -53,6 +56,8 @@ fn main() {
             }).unwrap();
         }
     }
+
+    println!("selecting...");
 
     // Let's select payments from database
     let selected_payments: Vec<Payment> =
